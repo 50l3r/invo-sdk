@@ -1,51 +1,57 @@
 {
-  "name": "invo-sdk",
-  "version": "1.0.0",
-  "description": "INVO SDK Typescript",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+    "name": "invo-sdk",
+    "version": "1.0.0",
+    "description": "INVO SDK Typescript",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "build:watch": "tsc --watch",
+        "clean": "rm -rf dist",
+        "prepublishOnly": "npm run clean && npm run build"
+    },
+    "keywords": [
+        "auth",
+        "authentication",
+        "jwt",
+        "oauth",
+        "typescript",
+        "sdk",
+        "calltek"
+    ],
+    "author": "Calltek",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/calltek/invo-auth-sdk.git"
+    },
+    "bugs": {
+        "url": "https://github.com/calltek/invo-auth-sdk/issues"
+    },
+    "homepage": "https://github.com/calltek/invo-auth-sdk#readme",
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^8.46.4",
+        "@typescript-eslint/parser": "^8.46.4",
+        "eslint": "^9.39.1",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.4",
+        "prettier": "^3.6.2",
+        "typescript": "^5.9.3"
+    },
+    "engines": {
+        "node": ">=14.0.0"
     }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
-    "clean": "rm -rf dist",
-    "prepublishOnly": "npm run clean && npm run build"
-  },
-  "keywords": [
-    "auth",
-    "authentication",
-    "jwt",
-    "oauth",
-    "typescript",
-    "sdk",
-    "calltek"
-  ],
-  "author": "Calltek",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/calltek/invo-auth-sdk.git"
-  },
-  "bugs": {
-    "url": "https://github.com/calltek/invo-auth-sdk/issues"
-  },
-  "homepage": "https://github.com/calltek/invo-auth-sdk#readme",
-  "devDependencies": {
-    "typescript": "^5.9.3"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  }
 }

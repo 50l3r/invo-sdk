@@ -10,12 +10,7 @@ import {
 } from './types'
 import { StorageManager } from './storage'
 import { decodeJWT, isTokenExpired } from './utils'
-import {
-    AuthError,
-    InvalidCredentialsError,
-    NetworkError,
-    TokenExpiredError,
-} from './errors'
+import { AuthError, InvalidCredentialsError, NetworkError, TokenExpiredError } from './errors'
 
 /**
  * Authentication client implementation

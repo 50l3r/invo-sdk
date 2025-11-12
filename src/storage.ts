@@ -34,9 +34,7 @@ class MemoryStorage implements StorageAdapter {
 /**
  * Create a storage adapter based on type
  */
-export function createStorageAdapter(
-    storageType: StorageType | StorageAdapter,
-): StorageAdapter {
+export function createStorageAdapter(storageType: StorageType | StorageAdapter): StorageAdapter {
     // If it's already a custom adapter, return it
     if (typeof storageType === 'object') {
         return storageType
