@@ -1,0 +1,45 @@
+## Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+## Build output
+dist/
+build/
+lib/
+coverage/
+*.tsbuildinfo
+
+## Environment
+.env
+.env.*
+
+## Editor files
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+## macOS
+.DS_Store
+.AppleDouble
+._*
+
+## Logs
+*.log
+
+## Lockfiles (optional - keep if you use lockfile)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+## TypeScript
+*.d.ts
+*.map
+
+## Misc
+.idea/
+coverage/
+thumbs.db
+desktop.ini
