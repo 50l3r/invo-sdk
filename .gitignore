@@ -43,3 +43,6 @@ coverage/
 coverage/
 thumbs.db
 desktop.ini
+
+## Custom
+src/types/api.types.ts
