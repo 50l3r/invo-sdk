@@ -16,6 +16,8 @@ config({ path: resolve(__dirname, '../.env') })
 const TEST_EMAIL = process.env.INVO_EMAIL || 'your-email@example.com'
 const TEST_PASSWORD = process.env.INVO_PASSWORD || 'your-password'
 const TEST_ENVIRONMENT = (process.env.INVO_ENV as 'production' | 'sandbox') || 'sandbox'
+const TEST_NAME = process.env.INVO_NAME
+const TEST_NIF = process.env.INVO_NIF
 
 async function main() {
     console.log('🚀 Starting INVO SDK Tests\n')
@@ -73,18 +75,18 @@ async function main() {
             issueDate: new Date().toISOString(),
             invoiceNumber: `TEST-${Date.now()}`,
             externalId: `test-order-${Date.now()}`,
-            totalAmount: 1210.00,
-            customerName: 'Cliente Test SL',
-            customerTaxId: 'B12345678',
-            emitterName: 'Empresa Test SL',
-            emitterTaxId: 'B87654321',
+            totalAmount: 1210.0,
+            customerName: TEST_NAME,
+            customerTaxId: TEST_NIF,
+            emitterName: TEST_NAME,
+            emitterTaxId: TEST_NIF,
             type: 'F1' as const,
             description: 'Factura de prueba del SDK',
             taxLines: [
                 {
                     taxRate: 21,
-                    baseAmount: 1000.00,
-                    taxAmount: 210.00,
+                    baseAmount: 1000.0,
+                    taxAmount: 210.0,
                 },
             ],
         }
@@ -100,13 +102,13 @@ async function main() {
 
         // Test 4: Generic API request
         console.log('🌐 Test 4: Generic API Request')
-        console.log('  Making request to /auth/me...')
+        console.log('  Making request to /invoice...')
         try {
-            const userData = await sdk.request('/auth/me', 'GET')
+            const invoicesData = await sdk.request('/invoice', 'GET')
             console.log('  ✅ Request successful!')
-            console.log('  User data:', JSON.stringify(userData, null, 2))
+            console.log('  Invoices data:', JSON.stringify(invoicesData, null, 2))
         } catch (error) {
-            console.log('  ⚠️  Endpoint /auth/me not available or requires different path')
+            console.log('  ⚠️  Endpoint /invoice not available or requires different path')
         }
         console.log('')
 
@@ -139,7 +141,6 @@ async function main() {
 
         console.log('🎉 All tests completed successfully!')
         console.log('')
-
     } catch (error) {
         console.error('')
         console.error('❌ Test failed!')
