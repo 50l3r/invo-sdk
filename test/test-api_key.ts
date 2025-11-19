@@ -97,7 +97,9 @@ async function main() {
         console.log('\n📊 Test 6: Test Operations with Token-based SDK')
         console.log('  Listing tokens with the new SDK instance...')
         const tokensFromTokenSdk = await tokenSdk.listApiTokens()
-        console.log(`  ✅ Retrieved ${tokensFromTokenSdk.length} token(s) using token authentication`)
+        console.log(
+            `  ✅ Retrieved ${tokensFromTokenSdk.length} token(s) using token authentication`,
+        )
 
         // Test 7: Create a test invoice with token-based SDK (optional)
         console.log('\n📄 Test 7: Create Invoice with Token-based SDK')
@@ -123,11 +125,10 @@ async function main() {
             ],
         }
 
-        console.log('  Invoice data prepared (not creating to avoid test data)')
-        // Uncomment to actually create the invoice:
-        // const result = await tokenSdk.createInvoice(invoiceData)
-        // console.log('  ✅ Invoice created successfully!')
-        // console.log(`  Invoice ID: ${result.invoiceId}`)
+        console.log('  Invoice data prepared ')
+        const result = await tokenSdk.createInvoice(invoiceData)
+        console.log('  ✅ Invoice created successfully!')
+        console.log(`  Invoice ID: ${result.invoiceId}`)
 
         // Test 8: Revoke API Token
         console.log('\n🗑️  Test 8: Revoke API Token')
