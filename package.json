@@ -1,8 +1,11 @@
 {
-    "name": "invo-sdk",
+    "name": "@calltek/invo-sdk",
     "version": "1.0.0",
     "type": "module",
     "description": "INVO SDK Typescript",
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
     "main": "./dist/index.js",
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -29,7 +32,8 @@
         "test:token": "npx tsx test/test-api_key.ts",
         "prepublishOnly": "npm run clean && npm run build",
         "types:sandbox": "npx tsx ./swagger.ts sandbox",
-        "types": "npx tsx ./swagger.ts"
+        "types": "npx tsx ./swagger.ts",
+        "release": "changeset publish"
     },
     "keywords": [
         "auth",
