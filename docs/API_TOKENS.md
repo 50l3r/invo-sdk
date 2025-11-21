@@ -2,30 +2,32 @@
 
 ## ¿Qué son los API Tokens?
 
-Los API Tokens son credenciales de autenticación que permiten acceder a tu cuenta INVO sin necesidad de usar email y contraseña. Son ideales para integraciones, aplicaciones backend y sistemas automatizados.
+Los API Tokens son credenciales de autenticación que permiten acceder a tu cuenta INVO de forma segura. Son la **única forma de autenticación** soportada por el SDK, ideal para integraciones, aplicaciones backend y sistemas automatizados.
 
 ## Ventajas
 
-✅ **Seguridad**: No compartes tus credenciales principales
-✅ **Simplicidad**: Autenticación en un solo paso
+✅ **Seguridad**: Autenticación sin credenciales de usuario
+✅ **Simplicidad**: Login automático, sin pasos adicionales
 ✅ **Ideal para Integraciones**: Perfecto para APIs y automatizaciones
 ✅ **Multi-entorno**: Tokens específicos para production y sandbox
+✅ **Sin gestión de sesiones**: No hay tokens de refresco ni expiración manual
 
-## Uso de Tokens
+## Uso Básico
 
-### Opción Recomendada: Helper Function
+### Inicialización Simple
 
 ```typescript
-import { createInvoSDKWithToken } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
 
-// Crea SDK ya autenticado con token
 // El environment se detecta automáticamente del prefijo:
 //   - invo_tok_prod_* → production
 //   - invo_tok_sand_* → sandbox
-const sdk = await createInvoSDKWithToken('invo_tok_prod_abc123...')
+const sdk = new InvoSDK({
+  apiToken: 'invo_tok_prod_abc123...'
+})
 
-// SDK listo para usar directamente
-const invoice = await sdk.createInvoice({
+// ¡Listo! El login es automático en la primera llamada
+const invoice = await sdk.store({
   issueDate: new Date().toISOString(),
   invoiceNumber: 'FAC-2024-001',
   externalId: 'order-12345',
@@ -35,31 +37,38 @@ const invoice = await sdk.createInvoice({
   emitterName: 'Mi Empresa SL',
   emitterTaxId: 'B87654321',
   description: 'Servicios de consultoría',
-  taxLines: [
-    {
-      taxRate: 21,
-      baseAmount: 1000.00,
-      taxAmount: 210.00
-    }
-  ]
+  taxLines: [{
+    taxRate: 21,
+    baseAmount: 1000.00,
+    taxAmount: 210.00
+  }]
 })
 
 console.log('Factura creada:', invoice.invoiceId)
 ```
 
-### Opción Alternativa: Login Manual
+### Con Workspace
 
 ```typescript
-import { InvoSDK } from 'invo-sdk'
+const sdk = new InvoSDK({
+  apiToken: 'invo_tok_prod_abc123...',
+  workspace: 'mi-workspace-id'
+})
+```
 
-// Crear SDK sin credenciales
-const sdk = new InvoSDK({ environment: 'production' })
+### Con Webhook para Recibir Estado
 
-// Autenticarse con el token
-await sdk.loginWithToken('invo_tok_prod_abc123xyz...')
+```typescript
+const sdk = new InvoSDK({
+  apiToken: 'invo_tok_prod_abc123...'
+})
 
-// SDK listo para usar
-const invoice = await sdk.createInvoice({...})
+// Pasar callback URL al crear la factura
+const invoice = await sdk.store({
+  // ... datos de la factura
+}, 'https://miapp.com/webhooks/invo')
+
+// Tu webhook recibirá actualizaciones cuando Hacienda procese la factura
 ```
 
 ## Casos de Uso
@@ -69,20 +78,20 @@ const invoice = await sdk.createInvoice({...})
 ```typescript
 // server.ts
 import express from 'express'
-import { createInvoSDKWithToken } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
 
 const app = express()
 app.use(express.json())
 
 // Inicializar SDK con token desde variables de entorno
-const sdk = await createInvoSDKWithToken(
-  process.env.INVO_API_TOKEN!
-)
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!
+})
 
 // Endpoint para crear facturas
 app.post('/api/invoices', async (req, res) => {
   try {
-    const result = await sdk.createInvoice(req.body)
+    const result = await sdk.store(req.body)
     res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -97,18 +106,18 @@ app.listen(3000, () => {
 ### 2. Integración con Webhooks
 
 ```typescript
-// webhook.ts
-import { createInvoSDKWithToken } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
+
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!
+})
 
 export async function handleWebhook(req: Request) {
-  const apiToken = process.env.INVO_API_TOKEN
-
-  if (!apiToken) {
-    return new Response('Missing API token', { status: 401 })
-  }
-
-  const sdk = await createInvoSDKWithToken(apiToken)
-  const invoice = await sdk.createInvoice(req.body)
+  // Crear factura y recibir estado en otro webhook
+  const invoice = await sdk.store(
+    req.body,
+    'https://miapp.com/webhooks/invoice-status'
+  )
 
   return new Response(JSON.stringify(invoice), {
     headers: { 'Content-Type': 'application/json' }
@@ -119,17 +128,17 @@ export async function handleWebhook(req: Request) {
 ### 3. Script de Automatización
 
 ```typescript
-import { createInvoSDKWithToken } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
+
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!
+})
 
 async function processInvoices() {
-  const sdk = await createInvoSDKWithToken(
-    process.env.INVO_API_TOKEN!
-  )
-
   // Procesar múltiples facturas
   for (const invoiceData of invoicesToProcess) {
     try {
-      const result = await sdk.createInvoice(invoiceData)
+      const result = await sdk.store(invoiceData)
       console.log(`✅ Factura creada: ${result.invoiceId}`)
     } catch (error) {
       console.error(`❌ Error: ${error.message}`)
@@ -138,6 +147,28 @@ async function processInvoices() {
 }
 
 processInvoices()
+```
+
+### 4. Multi-tenant con Workspaces
+
+```typescript
+import { InvoSDK } from '@calltek/invo-sdk'
+
+// Cliente 1
+const sdk1 = new InvoSDK({
+  apiToken: 'invo_tok_prod_client1...',
+  workspace: 'cliente-1'
+})
+
+// Cliente 2 (mismo certificado, diferente workspace)
+const sdk2 = new InvoSDK({
+  apiToken: 'invo_tok_prod_client2...',
+  workspace: 'cliente-2'
+})
+
+// Cada uno usa su propio workspace automáticamente
+await sdk1.store({...})
+await sdk2.store({...})
 ```
 
 ## Seguridad
@@ -152,17 +183,17 @@ INVO_API_TOKEN=invo_tok_prod_abc123xyz...
 
 ```typescript
 // Usar desde variables de entorno
-const sdk = await createInvoSDKWithToken(
-  process.env.INVO_API_TOKEN!
-)
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!
+})
 ```
 
 **❌ Incorrecto:**
 ```typescript
 // NUNCA hagas esto
-const sdk = await createInvoSDKWithToken(
-  'invo_tok_prod_abc123xyz...' // Token hardcoded
-)
+const sdk = new InvoSDK({
+  apiToken: 'invo_tok_prod_abc123xyz...' // Token hardcoded
+})
 ```
 
 ### Buenas Prácticas
@@ -196,12 +227,43 @@ Para obtener un token:
 3. Crea un nuevo token
 4. Guárdalo de forma segura (solo se muestra una vez)
 
-## Limitaciones
+## Métodos del SDK
 
-- Los tokens **NO** generan refresh tokens
-- Los tokens **NO** soportan auto-refresh
-- Los tokens comparten los mismos permisos que el usuario propietario
-- La gestión de tokens se hace en la plataforma web INVO
+### Facturas
+
+```typescript
+// Crear factura
+const invoice = await sdk.store(data, callback?)
+
+// Leer factura desde archivo
+const parsed = await sdk.read(file)
+
+// Generar PDF personalizado
+const pdfBuffer = await sdk.pdf(data)
+```
+
+### Utilidades
+
+```typescript
+// Obtener token de acceso actual
+const token = sdk.getAccessToken()
+
+// Obtener usuario autenticado
+const user = sdk.getUser()
+
+// Verificar autenticación
+const authenticated = sdk.isAuthenticated()
+
+// Request genérico a cualquier endpoint
+const data = await sdk.request('/endpoint', 'GET')
+```
+
+### Propiedades
+
+```typescript
+// Ambiente actual
+console.log(sdk.environment) // 'production' | 'sandbox'
+```
 
 ## Troubleshooting
 
@@ -217,6 +279,29 @@ Para obtener un token:
 ### Error: "Token expired"
 - El token llegó a su fecha de expiración
 - Solicita un nuevo token desde la plataforma INVO
+
+## Diferencias con Versiones Anteriores
+
+### ❌ Ya No Disponible
+
+```typescript
+// Ya NO soportado
+const sdk = createInvoSDK({ email, password })
+await sdk.login()
+await sdk.logout()
+await sdk.refreshAccessToken()
+sdk.setEnvironment('production')
+```
+
+### ✅ Nueva API
+
+```typescript
+// Forma correcta ahora
+const sdk = new InvoSDK({ apiToken })
+
+// Login automático en primera llamada
+await sdk.store({...})
+```
 
 ## FAQ
 
@@ -234,6 +319,12 @@ Revoca el token antiguo y crea uno nuevo desde la plataforma INVO.
 
 **¿Los tokens tienen permisos diferentes al usuario?**
 No, tienen los mismos permisos que el usuario propietario.
+
+**¿Necesito llamar a login()?**
+No, el login es automático en la primera llamada a la API.
+
+**¿Puedo cambiar de ambiente después de crear el SDK?**
+No, el ambiente se establece al crear la instancia. Crea una nueva instancia si necesitas otro ambiente.
 
 ## Soporte
 

@@ -1,7 +1,7 @@
 /**
  * Test script for INVO SDK - Reader Endpoint
  *
- * Tests the readInvoice method that reads invoice data from uploaded files
+ * Tests the read method that reads invoice data from uploaded files
  *
  * Usage:
  * npx tsx test/test-reader.ts
@@ -10,24 +10,27 @@
 import { config } from 'dotenv'
 import { resolve } from 'path'
 import { readFileSync, existsSync } from 'fs'
-import { createInvoSDK } from '../src/sdk'
+import { InvoSDK } from '../src/sdk'
 
 // Load environment variables from .env file in project root
 config({ path: resolve(__dirname, '../.env') })
 
 // Configuration
-const TEST_EMAIL = process.env.INVO_EMAIL || 'your-email@example.com'
-const TEST_PASSWORD = process.env.INVO_PASSWORD || 'your-password'
-const TEST_ENVIRONMENT = (process.env.INVO_ENV as 'production' | 'sandbox') || 'sandbox'
+const TEST_API_TOKEN = process.env.INVO_API_TOKEN || 'your-api-token-here'
 
 // Path to test invoice file (PDF, XML, etc.)
 const TEST_INVOICE_PATH = process.env.TEST_INVOICE_PATH || resolve(__dirname, '../test/factura_test.pdf')
 
 async function main() {
     console.log('🚀 Starting INVO SDK Reader Tests\n')
+
+    if (!TEST_API_TOKEN || TEST_API_TOKEN === 'your-api-token-here') {
+        console.error('❌ Error: INVO_API_TOKEN environment variable is not set')
+        console.error('   Please add INVO_API_TOKEN to your .env file')
+        process.exit(1)
+    }
+
     console.log('Configuration:')
-    console.log(`  Email: ${TEST_EMAIL}`)
-    console.log(`  Environment: ${TEST_ENVIRONMENT}`)
     console.log(`  Test Invoice Path: ${TEST_INVOICE_PATH}`)
     console.log('')
 
@@ -45,78 +48,40 @@ async function main() {
 
     // Create SDK instance
     console.log('📦 Creating SDK instance...')
-    const sdk = createInvoSDK({
-        email: TEST_EMAIL,
-        password: TEST_PASSWORD,
-        environment: TEST_ENVIRONMENT,
-        autoRefresh: true,
-        onTokenRefreshed: () => {
-            console.log('✅ Token refreshed automatically')
-        },
-        onError: (error) => {
-            console.error('❌ SDK Error:', error.message)
-        },
+    const sdk = new InvoSDK({
+        apiToken: TEST_API_TOKEN
     })
+    console.log(`  Environment: ${sdk.environment}`)
+    console.log('')
 
     try {
-        // Test 1: Login
-        console.log('🔐 Test 1: Authentication')
-        console.log('  Attempting login...')
-        const authResponse = await sdk.login()
-        console.log('  ✅ Login successful!')
-        console.log(`  User ID: ${authResponse.user.id}`)
-        console.log(`  User Email: ${authResponse.user.email}`)
-        console.log('')
+        // Test: Read invoice from file
+        console.log('📄 Test: Read Invoice from File')
+        console.log('  Reading invoice file...')
 
-        // Test 2: Read Invoice from file
-        console.log('📖 Test 2: Read Invoice')
-        console.log('  Loading test invoice file...')
-
-        // Read the file as a buffer
+        // Read file as buffer
         const fileBuffer = readFileSync(TEST_INVOICE_PATH)
+        const fileExtension = TEST_INVOICE_PATH.split('.').pop() || 'pdf'
+        const mimeType = fileExtension === 'xml' ? 'application/xml' : 'application/pdf'
+
         console.log(`  File size: ${fileBuffer.length} bytes`)
-
-        // Create a File object (in Node.js we need to create a Blob-like object)
-        const fileName = TEST_INVOICE_PATH.split('/').pop() || 'invoice.pdf'
-        const mimeType = fileName.endsWith('.xml')
-            ? 'application/xml'
-            : fileName.endsWith('.pdf')
-              ? 'application/pdf'
-              : 'application/octet-stream'
-
-        // For Node.js, we need to create a File-like object
-        // In Node 18+, File is available globally
-        let file: File | Blob
-        if (typeof File !== 'undefined') {
-            file = new File([fileBuffer], fileName, { type: mimeType })
-        } else {
-            // Fallback for older Node versions using Blob
-            file = new Blob([fileBuffer], { type: mimeType })
-        }
-
         console.log(`  File type: ${mimeType}`)
-        console.log('  Uploading and reading invoice...')
 
-        const invoiceData = await sdk.readInvoice(file)
+        // Create File object
+        const file = new File([fileBuffer], `factura_test.${fileExtension}`, {
+            type: mimeType,
+        })
+
+        console.log('  Sending file to reader endpoint...')
+        const invoiceData = await sdk.read(file)
 
         console.log('  ✅ Invoice read successfully!')
-        console.log('  Invoice data:', JSON.stringify(invoiceData, null, 2))
+        console.log('')
+        console.log('📋 Parsed Invoice Data:')
+        console.log(JSON.stringify(invoiceData, null, 2))
         console.log('')
 
-        // Validate response structure
-        console.log('📋 Test 3: Validate Response')
-        if (invoiceData) {
-            console.log('  ✅ Response contains data')
-            console.log(`  Response type: ${typeof invoiceData}`)
-            if (typeof invoiceData === 'object') {
-                console.log(`  Keys in response: ${Object.keys(invoiceData).join(', ')}`)
-            }
-        } else {
-            console.log('  ⚠️  Response is empty or null')
-        }
-        console.log('')
-
-        console.log('🎉 All Reader tests completed successfully!')
+        console.log('🎉 Reader test completed successfully!')
         console.log('')
     } catch (error) {
         console.error('')

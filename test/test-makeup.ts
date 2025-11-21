@@ -1,7 +1,7 @@
 /**
  * Test script for INVO SDK - Makeup Endpoint
  *
- * Tests the makeupInvoice method that generates PDF invoices with custom branding
+ * Tests the pdf method that generates PDF invoices with custom branding
  *
  * Usage:
  * npx tsx test/test-makeup.ts
@@ -10,16 +10,14 @@
 import { config } from 'dotenv'
 import { resolve } from 'path'
 import { writeFileSync } from 'fs'
-import { createInvoSDK } from '../src/sdk'
+import { InvoSDK } from '../src/sdk'
 import type { MakeupPDFDto } from '../src/types'
 
 // Load environment variables from .env file in project root
 config({ path: resolve(__dirname, '../.env') })
 
 // Configuration
-const TEST_EMAIL = process.env.INVO_EMAIL || 'your-email@example.com'
-const TEST_PASSWORD = process.env.INVO_PASSWORD || 'your-password'
-const TEST_ENVIRONMENT = (process.env.INVO_ENV as 'production' | 'sandbox') || 'sandbox'
+const TEST_API_TOKEN = process.env.INVO_API_TOKEN || 'your-api-token-here'
 const TEST_NAME = process.env.INVO_NAME || 'Test Company SL'
 const TEST_NIF = process.env.INVO_NIF || 'B12345678'
 
@@ -28,61 +26,50 @@ const OUTPUT_PDF_PATH = resolve(__dirname, '../test-output-invoice.pdf')
 
 async function main() {
     console.log('🚀 Starting INVO SDK Makeup Tests\n')
+
+    if (!TEST_API_TOKEN || TEST_API_TOKEN === 'your-api-token-here') {
+        console.error('❌ Error: INVO_API_TOKEN environment variable is not set')
+        console.error('   Please add INVO_API_TOKEN to your .env file')
+        process.exit(1)
+    }
+
     console.log('Configuration:')
-    console.log(`  Email: ${TEST_EMAIL}`)
-    console.log(`  Environment: ${TEST_ENVIRONMENT}`)
     console.log(`  Output PDF Path: ${OUTPUT_PDF_PATH}`)
     console.log('')
 
     // Create SDK instance
     console.log('📦 Creating SDK instance...')
-    const sdk = createInvoSDK({
-        email: TEST_EMAIL,
-        password: TEST_PASSWORD,
-        environment: TEST_ENVIRONMENT,
-        autoRefresh: true,
-        onTokenRefreshed: () => {
-            console.log('✅ Token refreshed automatically')
-        },
-        onError: (error) => {
-            console.error('❌ SDK Error:', error.message)
-        },
+    const sdk = new InvoSDK({
+        apiToken: TEST_API_TOKEN
     })
+    console.log(`  Environment: ${sdk.environment}`)
+    console.log('')
 
     try {
-        // Test 1: Login
-        console.log('🔐 Test 1: Authentication')
-        console.log('  Attempting login...')
-        const authResponse = await sdk.login()
-        console.log('  ✅ Login successful!')
-        console.log(`  User ID: ${authResponse.user.id}`)
-        console.log(`  User Email: ${authResponse.user.email}`)
-        console.log('')
-
-        // Test 2: Generate Invoice PDF
-        console.log('🎨 Test 2: Generate Invoice PDF')
+        // Test: Generate PDF invoice
+        console.log('📄 Test: Generate PDF Invoice')
         console.log('  Preparing invoice data...')
 
-        const invoiceData: MakeupPDFDto = {
-            id: `INV-TEST-${Date.now()}`,
+        const makeupData: MakeupPDFDto = {
+            id: `TEST-MAKEUP-${Date.now()}`,
             date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
             branding: {
-                logo: 'https://placehold.co/200x80',
-                favicon: 'https://placehold.co/32x32',
-                accent_color: '#4F46E5', // Indigo
-                foreground_color: '#ffffff', // White
+                logo: 'https://via.placeholder.com/150',
+                favicon: 'https://via.placeholder.com/32',
+                accent_color: '#0066cc',
+                foreground_color: '#ffffff',
             },
             client: {
                 name: 'John Doe',
                 cif: '12345678A',
-                address: 'Calle Falsa 123, 28080 Madrid',
+                address: 'Calle Ejemplo 123, Madrid, España',
                 phone: '+34 666 123 123',
-                email: 'john.doe@example.com',
+                email: 'john@example.com',
             },
             business: {
                 name: TEST_NAME,
                 cif: TEST_NIF,
-                address: 'Avenida Principal 456, 28080 Madrid',
+                address: 'Avenida Principal 456, Madrid, España',
                 phone: '+34 911 123 123',
                 email: 'business@example.com',
             },
@@ -92,74 +79,31 @@ async function main() {
             tax_percent: 21,
             surcharge_value: 0,
             surcharge_percent: 0,
-            observations: '¡Gracias por su compra! Es un placer hacer negocios con usted.',
-            payment_instructions:
-                'Transferencia bancaria a la cuenta ES00 0000 0000 0000 0000 0000. Por favor, incluya el número de factura como referencia.',
-            RGPD: 'Sus datos personales serán tratados de acuerdo con el Reglamento General de Protección de Datos (RGPD).',
+            observations: 'Gracias por su compra. Esperamos verle pronto de nuevo.',
+            payment_instructions: 'Transferencia bancaria a: ES00 0000 0000 0000 0000 0000',
+            RGPD: 'Sus datos personales están protegidos según el Reglamento General de Protección de Datos (RGPD).',
             type: 'invoice',
             template: 'classic',
             concepts: [
-                {
-                    name: 'Copistería',
-                    quantity: 80,
-                    total: 400.0,
-                    subtotal: 400.0,
-                    discount_value: 0.0,
-                    discount_percent: 0,
-                    price: 5,
-                },
+                ['Servicio de consultoría', '10', '100', '1000'],
+                ['IVA 21%', '', '', '210'],
             ],
         }
 
-        console.log('  Invoice details:')
-        console.log(`    ID: ${invoiceData.id}`)
-        console.log(`    Date: ${invoiceData.date}`)
-        console.log(`    Client: ${invoiceData.client.name} (${invoiceData.client.cif})`)
-        console.log(`    Business: ${invoiceData.business.name} (${invoiceData.business.cif})`)
-        console.log(`    Total: €${invoiceData.total}`)
-        console.log('')
-
         console.log('  Generating PDF...')
-        const startTime = Date.now()
+        const pdfBuffer = await sdk.pdf(makeupData)
 
-        const pdfBuffer = await sdk.makeupInvoice(invoiceData)
+        console.log('  ✅ PDF generated successfully!')
+        console.log(`  PDF size: ${pdfBuffer.byteLength} bytes`)
 
-        const endTime = Date.now()
-        const duration = endTime - startTime
-
-        console.log(`  ✅ PDF generated successfully! (${duration}ms)`)
-        console.log(
-            `  PDF size: ${pdfBuffer.byteLength} bytes (${(pdfBuffer.byteLength / 1024).toFixed(2)} KB)`,
-        )
-        console.log('')
-
-        // Test 3: Save PDF to file
-        console.log('💾 Test 3: Save PDF to File')
-        console.log(`  Writing PDF to: ${OUTPUT_PDF_PATH}`)
-
-        // Convert ArrayBuffer to Buffer for Node.js
-        const nodeBuffer = Buffer.from(pdfBuffer)
-        writeFileSync(OUTPUT_PDF_PATH, nodeBuffer)
-
+        // Save PDF to file
+        console.log(`  Saving PDF to: ${OUTPUT_PDF_PATH}`)
+        writeFileSync(OUTPUT_PDF_PATH, Buffer.from(pdfBuffer))
         console.log('  ✅ PDF saved successfully!')
-        console.log(`  File location: ${OUTPUT_PDF_PATH}`)
         console.log('')
 
-        // Test 4: Validate PDF structure
-        console.log('📋 Test 4: Validate PDF Structure')
-        const pdfHeader = nodeBuffer.toString('utf8', 0, 5)
-        if (pdfHeader === '%PDF-') {
-            console.log('  ✅ Valid PDF header detected')
-            console.log(`  PDF version: ${nodeBuffer.toString('utf8', 5, 8)}`)
-        } else {
-            console.log('  ⚠️  PDF header not found - might not be a valid PDF')
-        }
-        console.log('')
-
-        console.log('🎉 All Makeup tests completed successfully!')
-        console.log('')
-        console.log('📄 You can now open the generated PDF:')
-        console.log(`   open ${OUTPUT_PDF_PATH}`)
+        console.log('🎉 Makeup test completed successfully!')
+        console.log(`📁 You can open the PDF at: ${OUTPUT_PDF_PATH}`)
         console.log('')
     } catch (error) {
         console.error('')

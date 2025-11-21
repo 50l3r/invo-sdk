@@ -1,17 +1,18 @@
 # INVO SDK
 
-Backend SDK for INVO API - Authentication and Invoice Management with full TypeScript support.
+Backend SDK for INVO API - Simplified authentication and invoice management with full TypeScript support.
 
 ## Features
 
 ✅ **TypeScript Native** - Complete type definitions and autocomplete
 ✅ **Backend Optimized** - Designed for Node.js/Backend applications
-✅ **In-Memory Token Storage** - No dependencies on browser storage
-✅ **Auto Token Refresh** - Automatically refreshes tokens before expiration
+✅ **API Token Authentication** - Secure authentication with automatic login
+✅ **Zero Configuration** - Works out of the box with minimal setup
 ✅ **Invoice Management** - Create and manage VeriFactu invoices
 ✅ **Invoice Reader** - Extract data from PDF and XML invoices
 ✅ **PDF Generator** - Generate branded invoice PDFs
-✅ **API Token Authentication** - Authenticate using API tokens for integrations
+✅ **Webhook Support** - Receive invoice status updates
+✅ **Workspace Support** - Multi-tenant scenarios
 ✅ **Multi-Environment** - Production and sandbox modes
 ✅ **Zero Dependencies** - No external dependencies
 ✅ **Generic Request Method** - Call any API endpoint with authentication
@@ -19,35 +20,30 @@ Backend SDK for INVO API - Authentication and Invoice Management with full TypeS
 ## Installation
 
 ```bash
-npm install invo-sdk
+npm install @calltek/invo-sdk
 ```
 
 ```bash
-yarn add invo-sdk
+yarn add @calltek/invo-sdk
 ```
 
 ```bash
-pnpm add invo-sdk
+pnpm add @calltek/invo-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { createInvoSDK } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
 
-// Create SDK instance
-const sdk = createInvoSDK({
-  email: 'user@example.com',
-  password: 'password123',
-  environment: 'production', // or 'sandbox'
+// Create SDK instance (login is automatic!)
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!
+  // environment is auto-detected from token prefix
 })
 
-// Login
-await sdk.login()
-console.log('Authenticated:', sdk.isAuthenticated())
-
-// Create an invoice
-const result = await sdk.createInvoice({
+// Create an invoice - authentication happens automatically
+const result = await sdk.store({
   issueDate: new Date().toISOString(),
   invoiceNumber: 'FAC-2024-001',
   externalId: 'order-12345',
@@ -57,13 +53,11 @@ const result = await sdk.createInvoice({
   emitterName: 'Mi Empresa SL',
   emitterTaxId: 'B87654321',
   description: 'Servicios de consultoría tecnológica',
-  taxLines: [
-    {
-      taxRate: 21,
-      baseAmount: 1000.00,
-      taxAmount: 210.00
-    }
-  ]
+  taxLines: [{
+    taxRate: 21,
+    baseAmount: 1000.00,
+    taxAmount: 210.00
+  }]
 })
 
 console.log('Invoice created:', result.invoiceId)
@@ -74,46 +68,38 @@ console.log('Chain index:', result.chainIndex)
 
 ```typescript
 interface InvoSDKConfig {
-  email: string                     // Required: User email
-  password: string                  // Required: User password
-  environment?: 'production' | 'sandbox'  // Default: 'production'
-  autoRefresh?: boolean             // Default: true
-  refreshBuffer?: number            // Default: 300 (5 minutes before expiry)
-  onTokenRefreshed?: (tokens: AuthResponse) => void
-  onLogout?: () => void
-  onError?: (error: Error) => void
+  apiToken: string                      // Required: API token from INVO platform
+  workspace?: string                    // Optional: Workspace ID for multi-tenant
+  environment?: 'production' | 'sandbox' // Optional: Auto-detected from token
+  onError?: (error: Error) => void      // Optional: Error callback
 }
 ```
 
 ## Usage Examples
 
-### Authentication
+### Basic Setup
 
 ```typescript
-import { createInvoSDK } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
 
-// Create and login
-const sdk = createInvoSDK({
-  email: 'user@example.com',
-  password: 'password123',
-  environment: 'production',
+// Simple setup
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!
 })
 
-try {
-  await sdk.login()
-  console.log('User:', sdk.getUser())
-  console.log('Access Token:', sdk.getAccessToken())
-} catch (error) {
-  console.error('Login failed:', error.message)
-}
+// With workspace
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!,
+  workspace: 'my-workspace-id'
+})
 ```
 
 ### Creating Invoices
 
-#### Simple Invoice (Single Tax Rate)
+#### Simple Invoice
 
 ```typescript
-const result = await sdk.createInvoice({
+const result = await sdk.store({
   issueDate: new Date().toISOString(),
   invoiceNumber: 'FAC-2024-001',
   externalId: 'order-12345',
@@ -122,22 +108,32 @@ const result = await sdk.createInvoice({
   customerTaxId: 'B12345678',
   emitterName: 'Mi Empresa SL',
   emitterTaxId: 'B87654321',
-  type: 'F1', // Factura completa
   description: 'Servicios de consultoría',
-  taxLines: [
-    {
-      taxRate: 21,
-      baseAmount: 1000.00,
-      taxAmount: 210.00
-    }
-  ]
+  taxLines: [{
+    taxRate: 21,
+    baseAmount: 1000.00,
+    taxAmount: 210.00
+  }]
 })
+```
+
+#### Invoice with Webhook Callback
+
+```typescript
+// Receive status updates when the invoice is processed
+const result = await sdk.store({
+  issueDate: new Date().toISOString(),
+  invoiceNumber: 'FAC-2024-001',
+  // ... invoice data
+}, 'https://myapp.com/webhooks/invoice-status')
+
+// Your webhook will be called when the invoice status changes
 ```
 
 #### Invoice with Multiple Tax Rates
 
 ```typescript
-const result = await sdk.createInvoice({
+const result = await sdk.store({
   issueDate: new Date().toISOString(),
   invoiceNumber: 'FAC-2024-002',
   externalId: 'multi-tax-001',
@@ -167,55 +163,6 @@ const result = await sdk.createInvoice({
 })
 ```
 
-#### Invoice with Surcharge (Recargo de Equivalencia)
-
-```typescript
-const result = await sdk.createInvoice({
-  issueDate: new Date().toISOString(),
-  invoiceNumber: 'FAC-2024-003',
-  externalId: 'surcharge-001',
-  totalAmount: 126.20,
-  customerName: 'Cliente SL',
-  customerTaxId: 'B12345678',
-  emitterName: 'Mi Empresa SL',
-  emitterTaxId: 'B87654321',
-  description: 'Venta con recargo de equivalencia',
-  taxLines: [
-    {
-      taxRate: 21,
-      baseAmount: 100.00,
-      taxAmount: 21.00,
-      surchargeRate: 5.2,
-      surchargeAmount: 5.20
-    }
-  ]
-})
-```
-
-#### Tax-Exempt Invoice
-
-```typescript
-const result = await sdk.createInvoice({
-  issueDate: new Date().toISOString(),
-  invoiceNumber: 'FAC-2024-004',
-  externalId: 'exempt-001',
-  totalAmount: 2000.00,
-  customerName: 'Cliente SL',
-  customerTaxId: 'B12345678',
-  emitterName: 'Mi Empresa SL',
-  emitterTaxId: 'B87654321',
-  description: 'Operación exenta - Art. 20 Ley IVA',
-  taxLines: [
-    {
-      taxRate: 0,
-      baseAmount: 2000.00,
-      taxAmount: 0.00,
-      taxExemptionReason: 'E1'
-    }
-  ]
-})
-```
-
 ### Reading Invoice from File
 
 ```typescript
@@ -225,22 +172,22 @@ import fs from 'fs'
 const fileBuffer = fs.readFileSync('invoice.pdf')
 const file = new File([fileBuffer], 'invoice.pdf', { type: 'application/pdf' })
 
-const invoiceData = await sdk.readInvoice(file)
+const invoiceData = await sdk.read(file)
 console.log('Parsed invoice:', invoiceData)
 ```
 
-### Generating PDF Invoice with Custom Branding
+### Generating PDF Invoice
 
 ```typescript
 import fs from 'fs'
 
-const pdfBuffer = await sdk.makeupInvoice({
+const pdfBuffer = await sdk.pdf({
   id: 'INV-2024-001',
   date: '2024-01-15',
   branding: {
     logo: 'https://example.com/logo.png',
     favicon: 'https://example.com/favicon.ico',
-    accent_color: '#ff0000',
+    accent_color: '#0066cc',
     foreground_color: '#ffffff'
   },
   client: {
@@ -263,9 +210,9 @@ const pdfBuffer = await sdk.makeupInvoice({
   tax_percent: 21,
   surcharge_value: 0,
   surcharge_percent: 0,
-  observations: 'Thank you for your business!',
-  payment_instructions: 'Bank transfer to ES00 0000 0000 0000 0000 0000',
-  RGPD: 'Your data is protected according to GDPR regulations.',
+  observations: 'Thank you!',
+  payment_instructions: 'Bank transfer to ES00...',
+  RGPD: 'Your data is protected.',
   type: 'invoice',
   template: 'classic',
   concepts: []
@@ -273,90 +220,26 @@ const pdfBuffer = await sdk.makeupInvoice({
 
 // Save the PDF
 fs.writeFileSync('invoice.pdf', Buffer.from(pdfBuffer))
-console.log('PDF generated successfully!')
-```
-
-### Using API Tokens (Authentication Only)
-
-If you have an API token (obtained from your INVO account), you can authenticate directly without email/password:
-
-```typescript
-import { createInvoSDKWithToken } from 'invo-sdk'
-
-// Create SDK with API Token (obtained from your INVO account)
-// Environment is auto-detected from token prefix:
-//   - invo_tok_prod_* → production
-//   - invo_tok_sand_* → sandbox
-const sdk = await createInvoSDKWithToken('invo_tok_prod_abc123...')
-
-// SDK is ready to use - no login() needed
-const result = await sdk.createInvoice({
-  issueDate: new Date().toISOString(),
-  invoiceNumber: 'FAC-2024-001',
-  // ... rest of invoice data
-})
-```
-
-### Generic API Requests
-
-```typescript
-// Make any authenticated request to the API
-const data = await sdk.request('/users/me', 'GET')
-console.log('User data:', data)
-
-// POST request
-const result = await sdk.request('/some-endpoint', 'POST', {
-  foo: 'bar'
-})
-```
-
-### Token Management
-
-```typescript
-// Check authentication
-if (sdk.isAuthenticated()) {
-  console.log('User is authenticated')
-}
-
-// Get tokens
-const accessToken = sdk.getAccessToken()
-const refreshToken = sdk.getRefreshToken()
-
-// Manual refresh (auto-refresh is enabled by default)
-try {
-  await sdk.refreshAccessToken()
-  console.log('Token refreshed')
-} catch (error) {
-  console.error('Refresh failed:', error)
-}
-
-// Logout
-sdk.logout()
 ```
 
 ### Express.js Integration
 
 ```typescript
 import express from 'express'
-import { createInvoSDK } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
 
 const app = express()
 app.use(express.json())
 
-// Initialize SDK (can be done once at startup)
-const sdk = createInvoSDK({
-  email: process.env.INVO_EMAIL!,
-  password: process.env.INVO_PASSWORD!,
-  environment: 'production',
+// Initialize SDK (login is automatic on first request)
+const sdk = new InvoSDK({
+  apiToken: process.env.INVO_API_TOKEN!
 })
-
-// Login on startup
-await sdk.login()
 
 // Invoice creation endpoint
 app.post('/api/invoices', async (req, res) => {
   try {
-    const result = await sdk.createInvoice(req.body)
+    const result = await sdk.store(req.body, req.body.callback)
     res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -371,161 +254,142 @@ app.listen(3000, () => {
 ### NestJS Integration
 
 ```typescript
-import { Injectable, OnModuleInit } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { createInvoSDK, InvoSDK } from 'invo-sdk'
+import { InvoSDK } from '@calltek/invo-sdk'
 
 @Injectable()
-export class InvoiceService implements OnModuleInit {
+export class InvoiceService {
   private sdk: InvoSDK
 
   constructor(private configService: ConfigService) {
-    this.sdk = createInvoSDK({
-      email: this.configService.get('INVO_EMAIL'),
-      password: this.configService.get('INVO_PASSWORD'),
-      environment: this.configService.get('INVO_ENV'),
+    this.sdk = new InvoSDK({
+      apiToken: this.configService.get('INVO_API_TOKEN')!,
+      workspace: this.configService.get('INVO_WORKSPACE'),
     })
   }
 
-  async onModuleInit() {
-    await this.sdk.login()
+  async createInvoice(data: CreateInvoiceDto, callback?: string) {
+    return this.sdk.store(data, callback)
   }
 
-  async createInvoice(data: CreateInvoiceData) {
-    return this.sdk.createInvoice(data)
+  async readInvoice(file: File) {
+    return this.sdk.read(file)
+  }
+
+  async generatePDF(data: MakeupPDFDto) {
+    return this.sdk.pdf(data)
   }
 }
 ```
 
+### Multi-tenant with Workspaces
+
+```typescript
+import { InvoSDK } from '@calltek/invo-sdk'
+
+// Tenant 1
+const tenant1SDK = new InvoSDK({
+  apiToken: process.env.TENANT1_API_TOKEN!,
+  workspace: 'tenant-1'
+})
+
+// Tenant 2 (same certificate, different workspace)
+const tenant2SDK = new InvoSDK({
+  apiToken: process.env.TENANT2_API_TOKEN!,
+  workspace: 'tenant-2'
+})
+
+// Each operates independently
+await tenant1SDK.store({...})
+await tenant2SDK.store({...})
+```
+
 ## API Reference
 
-### Main SDK Methods
+### Main Methods
 
-#### `login(): Promise<AuthResponse>`
-Login with configured credentials.
+#### `store(data, callback?): Promise<CreateInvoiceResult>`
+Create and submit a new invoice.
 
-#### `logout(): void`
-Logout and clear all tokens from memory.
+```typescript
+const result = await sdk.store(invoiceData, 'https://webhook.url')
+```
 
-#### `refreshAccessToken(): Promise<AuthResponse>`
-Manually refresh the access token.
+#### `read(file): Promise<InvoiceReaderResult>`
+Read and parse invoice data from a file.
 
-#### `createInvoice(data: CreateInvoiceData): Promise<CreateInvoiceResult>`
-Create and submit a new invoice to the VeriFactu system.
+```typescript
+const data = await sdk.read(file)
+```
 
-#### `readInvoice(file: File | Blob): Promise<any>`
-Read and parse invoice data from an uploaded file (PDF, XML, etc.).
+#### `pdf(data): Promise<ArrayBuffer>`
+Generate a PDF invoice with custom branding.
 
-#### `makeupInvoice(data: MakeupPDFDto): Promise<ArrayBuffer>`
-Generate a PDF invoice with custom branding and styling.
+```typescript
+const pdfBuffer = await sdk.pdf(pdfData)
+```
 
-#### `loginWithToken(apiToken: string): Promise<LoginResponseDto>`
-Authenticate using an API Token (obtained from your INVO account) instead of email/password.
+#### `request<T>(endpoint, method?, body?): Promise<T>`
+Make a generic authenticated request.
 
-#### `request<T>(endpoint: string, method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: unknown): Promise<T>`
-Make a generic authenticated request to any API endpoint.
+```typescript
+const data = await sdk.request('/endpoint', 'GET')
+```
+
+### Utility Methods
 
 #### `getAccessToken(): string | null`
 Get the current access token.
-
-#### `getRefreshToken(): string | null`
-Get the current refresh token.
 
 #### `getUser(): User | null`
 Get the current user information.
 
 #### `isAuthenticated(): boolean`
-Check if the user is authenticated and token is valid.
+Check if authenticated.
 
-#### `getEnvironment(): 'production' | 'sandbox'`
-Get the current environment.
+### Properties
 
-#### `setEnvironment(env: 'production' | 'sandbox'): void`
-Switch between production and sandbox environments.
-
-### Types
+#### `environment: 'production' | 'sandbox'`
+Current environment (read-only).
 
 ```typescript
-interface CreateInvoiceData {
+console.log(sdk.environment) // 'production'
+```
+
+## Types
+
+```typescript
+interface CreateInvoiceDto {
   issueDate: string              // ISO 8601 format
-  invoiceNumber: string          // 1-60 chars, no " ' < > =
+  invoiceNumber: string          // 1-60 chars
   externalId: string             // 1-100 chars
   totalAmount: number            // Total including taxes
   customerName: string           // 1-120 chars
   customerTaxId: string          // NIF/CIF
   emitterName: string            // 1-120 chars
   emitterTaxId: string           // NIF/CIF
-  taxLines: InvoiceTaxLine[]     // Minimum 1 required
+  taxLines: InvoiceTaxLineDto[]  // Minimum 1 required
   currency?: string              // Default: "EUR"
-  type?: 'F1' | 'F2' | 'F3' | 'R1' | 'R2' | 'R3' | 'R4'  // Default: "F1"
+  type?: string                  // Default: "F1"
   description?: string           // 1-500 chars
-  rectifiedInvoiceIds?: string[] // Required for R1-R4
 }
 
-interface InvoiceTaxLine {
+interface InvoiceTaxLineDto {
   taxRate: number                // 0, 4, 5, 10, 21
   baseAmount: number             // Base amount
   taxAmount: number              // Tax amount
-  taxType?: string               // "01" (IVA), "02" (IPSI), "03" (IGIC), "04" (Otros)
+  taxType?: string               // Default: "01" (IVA)
   surchargeAmount?: number       // Surcharge amount
-  surchargeRate?: number         // 0.5, 0.62, 1.4, 1.75, 5.2
+  surchargeRate?: number         // Surcharge rate
   taxExemptionReason?: string    // E1-E6
   regimeKey?: string             // "01"-"19"
 }
 
 interface CreateInvoiceResult {
   success: boolean
-  invoiceId: string              // UUID of created invoice
-  chainIndex: number             // Index in VeriFactu chain
-}
-
-interface AuthResponse {
-  access_token: string
-  refresh_token: string
-  expires_in: number
-  user: User
-}
-
-interface User {
-  id: string
-  email: string
-}
-
-interface MakeupPDFDto {
-  id: string                          // Invoice number/ID
-  date: string                        // Issue date
-  branding: {
-    logo: string                      // Logo URL
-    favicon: string                   // Favicon URL
-    accent_color: string              // Primary color (e.g., "#ff0000")
-    foreground_color: string          // Secondary color (e.g., "#ffffff")
-  }
-  client: {
-    name: string                      // Client name
-    cif: string                       // Client tax ID
-    address: string                   // Client address
-    phone: string                     // Client phone
-    email: string                     // Client email
-  }
-  business: {
-    name: string                      // Business name
-    cif: string                       // Business tax ID
-    address: string                   // Business address
-    phone: string                     // Business phone
-    email: string                     // Business email
-  }
-  total: number                       // Total amount
-  subtotal: number                    // Subtotal amount
-  tax_value: number                   // Tax amount
-  tax_percent: number                 // Tax percentage
-  surcharge_value: number             // Surcharge amount
-  surcharge_percent: number           // Surcharge percentage
-  observations: string                // Additional notes
-  payment_instructions: string        // Payment instructions
-  RGPD: string                        // GDPR text
-  type: 'invoice' | 'budget' | 'proforma'  // Document type
-  template: string                    // Template name (e.g., "classic")
-  concepts: any[][]                   // Line items/concepts
+  invoiceId: string              // UUID
+  chainIndex: number             // VeriFactu chain index
 }
 ```
 
@@ -537,91 +401,44 @@ import {
   InvalidCredentialsError,
   TokenExpiredError,
   NetworkError,
-  InvalidTokenError,
-} from 'invo-sdk'
+} from '@calltek/invo-sdk'
 
 try {
-  await sdk.login()
+  await sdk.store({...})
 } catch (error) {
   if (error instanceof InvalidCredentialsError) {
-    console.error('Invalid email or password')
+    console.error('Invalid API token')
   } else if (error instanceof NetworkError) {
-    console.error('Network error:', error.message)
+    console.error('Network error')
   } else if (error instanceof TokenExpiredError) {
     console.error('Token expired')
   }
 }
 ```
 
-## Invoice Types
+## API Token Management
 
-- **F1**: Factura completa (Complete invoice)
-- **F2**: Factura simplificada (Simplified invoice, max 3000€)
-- **F3**: Factura sustitutiva (Substitutive invoice)
-- **R1-R4**: Facturas rectificativas (Corrective invoices)
+API tokens must be obtained from your INVO account dashboard. Token management (creation, listing, revocation) is done through the INVO web platform.
 
-## Tax Exemption Reasons
+**Token Format:**
+```
+invo_tok_prod_*  → production
+invo_tok_sand_*  → sandbox
+```
 
-- **E1**: Exenta - Art. 20 Ley IVA
-- **E2**: Exenta - Art. 21 Ley IVA
-- **E3**: Exenta - Art. 22 Ley IVA
-- **E4**: Exenta - Art. 23 Ley IVA
-- **E5**: Exenta - Art. 24 Ley IVA
-- **E6**: Exenta - Otras
-
-## Important Validations
-
-- **Minimum date**: 2024-10-28 (VeriFactu minimum date)
-- **No future dates**: Invoices cannot be dated in the future
-- **F2 maximum**: 3000€ for simplified invoices
-- **Prohibited characters in invoiceNumber**: `" ' < > =`
-- **Tax lines**: Minimum 1 required
-- **Valid surcharge rates**: Only specific combinations (IVA 21%→5.2%, etc.)
+The SDK automatically detects the environment from the token prefix.
 
 ## Environment URLs
 
 - **Production**: `https://api.invo.rest`
 - **Sandbox**: `https://sandbox.invo.rest`
 
-## API Token Authentication
+## Documentation
 
-If you have an API token from your INVO account, you can use it to authenticate instead of email/password. This is ideal for integrations and automated systems.
-
-### Using an API Token
-
-```typescript
-import { createInvoSDKWithToken } from 'invo-sdk'
-
-// Authenticate with API token (obtained from your INVO account)
-// Environment is auto-detected from token prefix:
-//   - invo_tok_prod_* → production
-//   - invo_tok_sand_* → sandbox
-const sdk = await createInvoSDKWithToken('invo_tok_prod_abc123...')
-
-// SDK is ready to use immediately
-const invoice = await sdk.createInvoice({
-  issueDate: new Date().toISOString(),
-  invoiceNumber: 'FAC-2024-001',
-  externalId: 'order-12345',
-  totalAmount: 1210.00,
-  customerName: 'Cliente SL',
-  customerTaxId: 'B12345678',
-  emitterName: 'Mi Empresa SL',
-  emitterTaxId: 'B87654321',
-  description: 'Servicios de consultoría',
-  taxLines: [
-    {
-      taxRate: 21,
-      baseAmount: 1000.00,
-      taxAmount: 210.00
-    }
-  ]
-})
-
-console.log('Invoice created:', invoice.invoiceId)
-```
-
-**Note:** API tokens must be obtained from your INVO account dashboard. Token management (creation, revocation) is done through the INVO web platform, not through this SDK.
+- **[API Tokens Guide](./docs/API_TOKENS.md)** - Complete guide on API tokens
+- **[Examples](./docs/EXAMPLES.md)** - Usage examples and integration patterns
+- **[Testing](./docs/TESTING.md)** - Testing guide
+- **[Publishing](./docs/PUBLISHING.md)** - Publishing guide
 
 ## Development
 
@@ -643,17 +460,40 @@ npm run types          # Production
 npm run types:sandbox  # Sandbox
 ```
 
-## Migration from Legacy Client
+## Migration from v1.x
 
-If you were using the old `createAuthClient`, it's still available for backward compatibility but is deprecated:
+If you're migrating from v1.x:
+
+### ❌ Old API (v1.x)
 
 ```typescript
-// Old way (deprecated, still works for frontend apps)
-import { createAuthClient } from 'invo-sdk'
-
-// New way (recommended for backend)
 import { createInvoSDK } from 'invo-sdk'
+
+const sdk = createInvoSDK({ email, password })
+await sdk.login()
+await sdk.createInvoice({...})
+await sdk.logout()
 ```
+
+### ✅ New API (v2.x)
+
+```typescript
+import { InvoSDK } from '@calltek/invo-sdk'
+
+const sdk = new InvoSDK({ apiToken })
+// Login is automatic!
+await sdk.store({...})
+// No logout needed
+```
+
+**Breaking Changes:**
+- Email/password authentication removed (API token only)
+- `createInvoice` renamed to `store`
+- `readInvoice` renamed to `read`
+- `makeupInvoice` renamed to `pdf`
+- `login()`, `logout()`, `refreshAccessToken()` removed
+- `createInvoSDK` and `createInvoSDKWithToken` helpers removed
+- Use `new InvoSDK()` directly
 
 ## License
 

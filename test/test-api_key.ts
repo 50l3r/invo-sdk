@@ -1,6 +1,6 @@
 /**
  * Test script for INVO SDK API Token Authentication
- * Tests: createInvoSDKWithToken and loginWithToken
+ * Tests: new InvoSDK() with API token and automatic login
  *
  * Note: API token management (create, list, revoke) is done through the INVO web platform.
  * This test assumes you have an existing API token from your INVO account.
@@ -8,7 +8,7 @@
 
 import { config } from 'dotenv'
 import { resolve } from 'path'
-import { createInvoSDKWithToken, InvoSDK } from '../src/sdk'
+import { InvoSDK } from '../src/sdk'
 
 // Load environment variables from .env file in project root
 config({ path: resolve(__dirname, '../.env') })
@@ -29,17 +29,16 @@ async function main() {
     }
 
     try {
-        // Test 1: Create SDK with API Token (using helper function)
-        console.log('🔐 Test 1: Create SDK with API Token (using createInvoSDKWithToken)')
+        // Test 1: Create SDK with API Token (automatic login)
+        console.log('🔐 Test 1: Create SDK with API Token (automatic authentication)')
         console.log('  Creating SDK instance...')
-        const sdk = await createInvoSDKWithToken(TEST_API_TOKEN)
-        console.log('  ✅ SDK created and authenticated successfully!')
-        console.log(`  Is authenticated: ${sdk.isAuthenticated() ? '✅' : '❌'}`)
-        const user = sdk.getUser()
-        console.log(`  Current user: ${user?.email || 'None'}`)
-        console.log(`  Environment: ${sdk.getEnvironment()}`)
+        const sdk = new InvoSDK({
+            apiToken: TEST_API_TOKEN
+        })
+        console.log('  ✅ SDK created successfully!')
+        console.log(`  Environment: ${sdk.environment}`)
 
-        // Test 2: Create test invoice with token-based SDK
+        // Test 2: Create test invoice (authentication happens automatically)
         console.log('\n📄 Test 2: Create Invoice with Token Authentication')
         console.log('  Preparing test invoice...')
 
@@ -63,22 +62,55 @@ async function main() {
             ],
         }
 
-        console.log('  Creating invoice...')
-        const result = await sdk.createInvoice(invoiceData)
+        console.log('  Creating invoice (login happens automatically)...')
+        const result = await sdk.store(invoiceData)
         console.log('  ✅ Invoice created successfully!')
         console.log(`  Invoice ID: ${result.invoiceId}`)
         console.log(`  Chain Index: ${result.chainIndex}`)
+        console.log(`  Is authenticated: ${sdk.isAuthenticated() ? '✅' : '❌'}`)
+        const user = sdk.getUser()
+        console.log(`  Current user: ${user?.email || 'None'}`)
 
-        // Test 3: Manual login with token (alternative method)
-        console.log('\n🔑 Test 3: Manual Login with Token (alternative method)')
-        console.log('  Creating SDK instance without authentication...')
-        const sdk2 = new InvoSDK({ environment: 'production' })
-        console.log('  Logging in with API token...')
-        const authResponse = await sdk2.loginWithToken(TEST_API_TOKEN)
-        console.log('  ✅ Login successful!')
-        console.log(`  User ID: ${authResponse.user.id}`)
-        console.log(`  User Email: ${authResponse.user.email}`)
-        console.log(`  Is authenticated: ${sdk2.isAuthenticated() ? '✅' : '❌'}`)
+        // Test 3: Create invoice with webhook callback
+        console.log('\n📞 Test 3: Create Invoice with Webhook Callback')
+        console.log('  Preparing test invoice with webhook...')
+
+        const invoiceData2 = {
+            issueDate: new Date().toISOString(),
+            invoiceNumber: `TEST-WEBHOOK-${Date.now()}`,
+            externalId: `test-webhook-order-${Date.now()}`,
+            totalAmount: 605.0,
+            customerName: TEST_NAME || 'Test Customer',
+            customerTaxId: TEST_NIF || 'B12345678',
+            emitterName: TEST_NAME || 'Test Emitter',
+            emitterTaxId: TEST_NIF || 'B87654321',
+            type: 'F1' as const,
+            description: 'Factura de prueba con webhook',
+            taxLines: [
+                {
+                    taxRate: 21,
+                    baseAmount: 500.0,
+                    taxAmount: 105.0,
+                },
+            ],
+        }
+
+        const webhookUrl = 'https://example.com/webhooks/invoice-status'
+        console.log(`  Webhook URL: ${webhookUrl}`)
+        console.log('  Creating invoice with webhook...')
+        const result2 = await sdk.store(invoiceData2, webhookUrl)
+        console.log('  ✅ Invoice with webhook created successfully!')
+        console.log(`  Invoice ID: ${result2.invoiceId}`)
+        console.log(`  Chain Index: ${result2.chainIndex}`)
+
+        // Test 4: SDK with workspace
+        console.log('\n🏢 Test 4: Create SDK with Workspace')
+        const workspaceSdk = new InvoSDK({
+            apiToken: TEST_API_TOKEN,
+            workspace: 'test-workspace'
+        })
+        console.log('  ✅ SDK with workspace created successfully!')
+        console.log(`  Environment: ${workspaceSdk.environment}`)
 
         console.log('\n🎉 All API Token authentication tests completed successfully!')
         console.log('')
