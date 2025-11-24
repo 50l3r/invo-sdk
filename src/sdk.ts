@@ -28,6 +28,7 @@ export class InvoSDK {
     private workspace?: string
     public environment: 'production' | 'sandbox'
     private onError: (error: Error) => void
+    private debug: boolean
 
     // Token storage in memory
     private accessToken: string | null = null
@@ -48,6 +49,12 @@ export class InvoSDK {
      *   workspace: 'workspace-id'
      * })
      *
+     * // With debug logging enabled
+     * const sdk = new InvoSDK({
+     *   apiToken: 'invo_tok_prod_...',
+     *   debug: true
+     * })
+     *
      * // All methods automatically authenticate when needed
      * const invoice = await sdk.store({...})
      * ```
@@ -59,6 +66,7 @@ export class InvoSDK {
 
         this.apiToken = config.apiToken
         this.workspace = config.workspace
+        this.debug = config.debug || false
 
         // Auto-detect environment from API token if not provided
         const detectedEnv = detectEnvironmentFromToken(this.apiToken)
@@ -112,11 +120,21 @@ export class InvoSDK {
         options?: {
             responseType?: 'json' | 'arrayBuffer'
             contentType?: string | null
+            debug?: boolean
         },
     ): Promise<T> {
         try {
             const url = `${this.apiUrl}${endpoint}`
             const headers: HeadersInit = {}
+
+            // Optional debug logging
+            if (this.debug) {
+                console.log('API Request:', {
+                    url,
+                    method,
+                    body: body instanceof FormData ? '[FormData]' : body,
+                })
+            }
 
             if (options?.contentType !== null) {
                 headers['Content-Type'] = options?.contentType || 'application/json'
@@ -160,11 +178,32 @@ export class InvoSDK {
                     message: 'Request failed',
                 }))
 
+                // Log detailed error information for debugging
+                console.error('API Request Failed:', {
+                    endpoint,
+                    method,
+                    status: response.status,
+                    statusText: response.statusText,
+                    error,
+                    sentBody: body instanceof FormData ? '[FormData]' : body,
+                })
+
                 if (response.status === 401) {
                     throw new InvalidCredentialsError(error.message || 'Invalid credentials')
                 }
 
-                throw new AuthError(error.message || 'Request failed', response.status)
+                // Build detailed error message
+                let errorMessage = error.message || 'Request failed'
+
+                // Add validation errors if present
+                if (error.errors) {
+                    const validationErrors = Array.isArray(error.errors)
+                        ? error.errors.join(', ')
+                        : JSON.stringify(error.errors)
+                    errorMessage += ` - Validation errors: ${validationErrors}`
+                }
+
+                throw new AuthError(errorMessage, response.status)
             }
 
             // Return based on response type

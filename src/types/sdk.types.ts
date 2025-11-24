@@ -31,5 +31,12 @@ export interface InvoSDKConfig {
      * Callback fired on authentication errors
      */
     onError?: (error: Error) => void
+
+    /**
+     * Enable debug logging to console
+     * When enabled, logs all API requests and detailed error information
+     * @default false
+     */
+    debug?: boolean
 }
 
