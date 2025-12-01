@@ -47,14 +47,7 @@ const invoice = await sdk.store({
 console.log('Factura creada:', invoice.invoiceId)
 ```
 
-### Con Workspace
-
-```typescript
-const sdk = new InvoSDK({
-  apiToken: 'invo_tok_prod_abc123...',
-  workspace: 'mi-workspace-id'
-})
-```
+**Nota:** El workspace está determinado automáticamente por el API token. Cada token está asociado a un workspace específico.
 
 ### Con Webhook para Recibir Estado
 
@@ -154,19 +147,17 @@ processInvoices()
 ```typescript
 import { InvoSDK } from '@calltek/invo-sdk'
 
-// Cliente 1
+// Cliente 1 - Cada API token ya está asociado a un workspace
 const sdk1 = new InvoSDK({
-  apiToken: 'invo_tok_prod_client1...',
-  workspace: 'cliente-1'
+  apiToken: 'invo_tok_prod_client1...'
 })
 
-// Cliente 2 (mismo certificado, diferente workspace)
+// Cliente 2 - Token diferente para workspace diferente
 const sdk2 = new InvoSDK({
-  apiToken: 'invo_tok_prod_client2...',
-  workspace: 'cliente-2'
+  apiToken: 'invo_tok_prod_client2...'
 })
 
-// Cada uno usa su propio workspace automáticamente
+// Cada uno usa su propio workspace automáticamente (determinado por el token)
 await sdk1.store({...})
 await sdk2.store({...})
 ```

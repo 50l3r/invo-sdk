@@ -65,9 +65,9 @@ npx tsx test/test-makeup.ts
    - Crea factura con callback URL
    - Verifica que el webhook se registre correctamente
 
-4. **SDK con Workspace**
-   - Crea instancia con workspace específico
-   - Verifica configuración multi-tenant
+4. **Gestión de Workspace**
+   - Verifica que el workspace está determinado por el API token
+   - Cada API token está asociado a un workspace específico
 
 ### ✅ test-invoice.ts
 
@@ -134,9 +134,10 @@ npx tsx test/test-makeup.ts
   Invoice ID: 550e8400-e29b-41d4-a716-446655440002
   Chain Index: 1
 
-🏢 Test 4: Create SDK with Workspace
-  ✅ SDK with workspace created successfully!
-  Environment: production
+🏢 Test 4: Workspace Management
+  ✅ Workspace is automatically determined by the API token
+  Each API token is associated with a specific workspace
+  No need to specify workspace separately
 
 🎉 All API Token authentication tests completed successfully!
 ```
@@ -368,24 +369,22 @@ console.log('Factura creada:', invoice.invoiceId)
 console.log('Webhook registrado para recibir actualizaciones de estado')
 ```
 
-### Probar multi-tenant con workspaces
+### Probar multi-tenant con diferentes API tokens
 
 ```typescript
 import { InvoSDK } from '@calltek/invo-sdk'
 
-// Cliente 1
+// Cliente 1 - Cada API token ya está asociado a un workspace
 const sdk1 = new InvoSDK({
-  apiToken: process.env.CLIENT1_API_TOKEN!,
-  workspace: 'cliente-1'
+  apiToken: process.env.CLIENT1_API_TOKEN!
 })
 
-// Cliente 2
+// Cliente 2 - Token diferente para workspace diferente
 const sdk2 = new InvoSDK({
-  apiToken: process.env.CLIENT2_API_TOKEN!,
-  workspace: 'cliente-2'
+  apiToken: process.env.CLIENT2_API_TOKEN!
 })
 
-// Cada uno opera de forma independiente
+// Cada uno opera de forma independiente con su propio workspace
 const invoice1 = await sdk1.store({...})
 const invoice2 = await sdk2.store({...})
 ```

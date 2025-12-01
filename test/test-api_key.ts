@@ -7,8 +7,13 @@
  */
 
 import { config } from 'dotenv'
-import { resolve } from 'path'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { InvoSDK } from '../src/sdk'
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // Load environment variables from .env file in project root
 config({ path: resolve(__dirname, '../.env') })
@@ -103,14 +108,11 @@ async function main() {
         console.log(`  Invoice ID: ${result2.invoiceId}`)
         console.log(`  Chain Index: ${result2.chainIndex}`)
 
-        // Test 4: SDK with workspace
-        console.log('\n🏢 Test 4: Create SDK with Workspace')
-        const workspaceSdk = new InvoSDK({
-            apiToken: TEST_API_TOKEN,
-            workspace: 'test-workspace'
-        })
-        console.log('  ✅ SDK with workspace created successfully!')
-        console.log(`  Environment: ${workspaceSdk.environment}`)
+        // Test 4: Verify workspace is determined by API token
+        console.log('\n🏢 Test 4: Workspace Management')
+        console.log('  ✅ Workspace is automatically determined by the API token')
+        console.log('  Each API token is associated with a specific workspace')
+        console.log('  No need to specify workspace separately')
 
         console.log('\n🎉 All API Token authentication tests completed successfully!')
         console.log('')

@@ -141,12 +141,6 @@ class InvoSDK {
      * // Basic usage
      * const sdk = new InvoSDK({ apiToken: 'invo_tok_prod_...' })
      *
-     * // With workspace
-     * const sdk = new InvoSDK({
-     *   apiToken: 'invo_tok_prod_...',
-     *   workspace: 'workspace-id'
-     * })
-     *
      * // With debug logging enabled
      * const sdk = new InvoSDK({
      *   apiToken: 'invo_tok_prod_...',
@@ -154,6 +148,7 @@ class InvoSDK {
      * })
      *
      * // All methods automatically authenticate when needed
+     * // The workspace is determined by the API token
      * const invoice = await sdk.store({...})
      * ```
      */
@@ -166,7 +161,6 @@ class InvoSDK {
             throw new Error('Invalid environment. Allowed values are production, sandbox.');
         }
         this.apiToken = config.apiToken;
-        this.workspace = config.workspace;
         this.debug = config.debug || false;
         // Auto-detect environment from API token if not provided
         const detectedEnv = detectEnvironmentFromToken(this.apiToken);
@@ -230,10 +224,6 @@ class InvoSDK {
                     throw new TokenExpiredError('No access token available after authentication.');
                 }
                 headers['Authorization'] = `Bearer ${this.accessToken}`;
-            }
-            // Add workspace header if specified
-            if (this.workspace) {
-                headers['X-Workspace-Id'] = this.workspace;
             }
             // Prepare body based on content type
             let requestBody;

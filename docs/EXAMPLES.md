@@ -8,9 +8,9 @@
 import { InvoSDK } from '@calltek/invo-sdk'
 
 const sdk = new InvoSDK({
-  apiToken: process.env.INVO_API_TOKEN!,
+  apiToken: process.env.INVO_API_TOKEN!
   // environment is auto-detected from token prefix
-  // optional: workspace: 'my-workspace-id'
+  // workspace is automatically determined by the API token
 })
 
 // No need to call login() - it's automatic!
@@ -293,8 +293,7 @@ export class InvoiceService {
 
   constructor(private configService: ConfigService) {
     this.sdk = new InvoSDK({
-      apiToken: this.configService.get('INVO_API_TOKEN')!,
-      workspace: this.configService.get('INVO_WORKSPACE'),
+      apiToken: this.configService.get('INVO_API_TOKEN')!
     })
   }
 
@@ -312,24 +311,22 @@ export class InvoiceService {
 }
 ```
 
-## Multi-tenant with Workspaces
+## Multi-tenant with Different API Tokens
 
 ```typescript
 import { InvoSDK } from '@calltek/invo-sdk'
 
-// Tenant 1
+// Tenant 1 - Each API token is already associated with a workspace
 const tenant1SDK = new InvoSDK({
-  apiToken: process.env.TENANT1_API_TOKEN!,
-  workspace: 'tenant-1-workspace'
+  apiToken: process.env.TENANT1_API_TOKEN!
 })
 
-// Tenant 2 (shares same certificate, different workspace)
+// Tenant 2 - Different API token for different workspace
 const tenant2SDK = new InvoSDK({
-  apiToken: process.env.TENANT2_API_TOKEN!,
-  workspace: 'tenant-2-workspace'
+  apiToken: process.env.TENANT2_API_TOKEN!
 })
 
-// Each tenant operates independently
+// Each tenant operates independently with its own workspace
 await tenant1SDK.store({...})
 await tenant2SDK.store({...})
 ```

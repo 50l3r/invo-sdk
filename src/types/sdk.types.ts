@@ -9,16 +9,12 @@ export interface InvoSDKConfig {
     /**
      * API token for authentication (required)
      * The SDK will automatically login when initialized
+     * The workspace is determined by the API token configuration
      * Environment is auto-detected from the token prefix:
      * - invo_tok_prod_* → production
      * - invo_tok_sand_* → sandbox
      */
     apiToken: string
-
-    /**
-     * Workspace ID to use for multi-tenant scenarios
-     */
-    workspace?: string
 
     /**
      * Environment to use

@@ -8,9 +8,14 @@
  */
 
 import { config } from 'dotenv'
-import { resolve } from 'path'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { readFileSync, existsSync } from 'fs'
 import { InvoSDK } from '../src/sdk'
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // Load environment variables from .env file in project root
 config({ path: resolve(__dirname, '../.env') })

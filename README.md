@@ -69,11 +69,13 @@ console.log('Chain index:', result.chainIndex)
 ```typescript
 interface InvoSDKConfig {
   apiToken: string                      // Required: API token from INVO platform
-  workspace?: string                    // Optional: Workspace ID for multi-tenant
   environment?: 'production' | 'sandbox' // Optional: Auto-detected from token
   onError?: (error: Error) => void      // Optional: Error callback
+  debug?: boolean                       // Optional: Enable debug logging
 }
 ```
+
+**Important:** The workspace is automatically determined by the API token. Each API token is associated with a specific workspace, so you don't need to specify it separately.
 
 ## Usage Examples
 
@@ -82,15 +84,9 @@ interface InvoSDKConfig {
 ```typescript
 import { InvoSDK } from '@calltek/invo-sdk'
 
-// Simple setup
+// Simple setup - workspace is determined by the API token
 const sdk = new InvoSDK({
   apiToken: process.env.INVO_API_TOKEN!
-})
-
-// With workspace
-const sdk = new InvoSDK({
-  apiToken: process.env.INVO_API_TOKEN!,
-  workspace: 'my-workspace-id'
 })
 ```
 
@@ -264,8 +260,7 @@ export class InvoiceService {
 
   constructor(private configService: ConfigService) {
     this.sdk = new InvoSDK({
-      apiToken: this.configService.get('INVO_API_TOKEN')!,
-      workspace: this.configService.get('INVO_WORKSPACE'),
+      apiToken: this.configService.get('INVO_API_TOKEN')!
     })
   }
 
@@ -283,24 +278,22 @@ export class InvoiceService {
 }
 ```
 
-### Multi-tenant with Workspaces
+### Multi-tenant with Different API Tokens
 
 ```typescript
 import { InvoSDK } from '@calltek/invo-sdk'
 
-// Tenant 1
+// Tenant 1 - Each API token is already associated with a workspace
 const tenant1SDK = new InvoSDK({
-  apiToken: process.env.TENANT1_API_TOKEN!,
-  workspace: 'tenant-1'
+  apiToken: process.env.TENANT1_API_TOKEN!
 })
 
-// Tenant 2 (same certificate, different workspace)
+// Tenant 2 - Different API token for different workspace
 const tenant2SDK = new InvoSDK({
-  apiToken: process.env.TENANT2_API_TOKEN!,
-  workspace: 'tenant-2'
+  apiToken: process.env.TENANT2_API_TOKEN!
 })
 
-// Each operates independently
+// Each operates independently with its own workspace
 await tenant1SDK.store({...})
 await tenant2SDK.store({...})
 ```

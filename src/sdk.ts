@@ -25,7 +25,6 @@ function detectEnvironmentFromToken(apiToken: string): 'production' | 'sandbox' 
  */
 export class InvoSDK {
     private apiToken: string
-    private workspace?: string
     public environment: 'production' | 'sandbox'
     private onError: (error: Error) => void
     private debug: boolean
@@ -43,12 +42,6 @@ export class InvoSDK {
      * // Basic usage
      * const sdk = new InvoSDK({ apiToken: 'invo_tok_prod_...' })
      *
-     * // With workspace
-     * const sdk = new InvoSDK({
-     *   apiToken: 'invo_tok_prod_...',
-     *   workspace: 'workspace-id'
-     * })
-     *
      * // With debug logging enabled
      * const sdk = new InvoSDK({
      *   apiToken: 'invo_tok_prod_...',
@@ -56,6 +49,7 @@ export class InvoSDK {
      * })
      *
      * // All methods automatically authenticate when needed
+     * // The workspace is determined by the API token
      * const invoice = await sdk.store({...})
      * ```
      */
@@ -65,7 +59,6 @@ export class InvoSDK {
         }
 
         this.apiToken = config.apiToken
-        this.workspace = config.workspace
         this.debug = config.debug || false
 
         // Auto-detect environment from API token if not provided
@@ -150,11 +143,6 @@ export class InvoSDK {
                 }
 
                 headers['Authorization'] = `Bearer ${this.accessToken}`
-            }
-
-            // Add workspace header if specified
-            if (this.workspace) {
-                headers['X-Workspace-Id'] = this.workspace
             }
 
             // Prepare body based on content type
