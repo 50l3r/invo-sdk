@@ -90,8 +90,25 @@ async function main() {
             type: 'invoice',
             template: 'classic',
             concepts: [
-                ['Servicio de consultoría', '10', '100', '1000'],
-                ['IVA 21%', '', '', '210'],
+                {
+                    name: 'Servicio de consultoría',
+                    quantity: 5,
+                    price: 100,
+                    subtotal: 500,
+                    total: 500,
+                    discount_value: 0,
+                    discount_percent: 0
+                },
+
+                    {
+                    name: 'Servicio de desarrollo web',
+                    quantity: 1,
+                    price: 1200,
+                    subtotal: 1200,
+                    total: 1100,
+                    discount_value: 100,
+                    discount_percent: 0
+                },
             ],
         }
 

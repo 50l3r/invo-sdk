@@ -28,6 +28,24 @@ export interface UserDto {
   role: "client" | "admin";
 }
 
+export interface WorkspaceDto {
+  /**
+   * ID del workspace
+   * @example "550e8400-e29b-41d4-a716-446655440000"
+   */
+  workspace_id: string;
+  /**
+   * Nombre del workspace
+   * @example "Mi Empresa S.L."
+   */
+  name: string;
+  /**
+   * Rol del usuario en este workspace
+   * @example "owner"
+   */
+  role: "owner" | "admin" | "member" | "viewer";
+}
+
 export interface LoginResponseDto {
   /**
    * Access token JWT de Supabase
@@ -46,6 +64,13 @@ export interface LoginResponseDto {
   expires_in: number;
   /** Información del usuario */
   user: UserDto;
+  /** Workspaces activos del usuario */
+  workspaces: WorkspaceDto[];
+  /**
+   * ID del workspace actual (incluido en el JWT)
+   * @example "550e8400-e29b-41d4-a716-446655440000"
+   */
+  current_workspace_id: string;
 }
 
 export interface RegisterDto {
@@ -100,6 +125,14 @@ export interface OAuthCallbackDto {
   expires_in?: number;
 }
 
+export interface SwitchWorkspaceDto {
+  /**
+   * ID del workspace al que se quiere cambiar
+   * @example "550e8400-e29b-41d4-a716-446655440000"
+   */
+  workspace_id: string;
+}
+
 export interface CreateApiTokenDto {
   /**
    * Nombre descriptivo del token
@@ -116,6 +149,77 @@ export interface CreateApiTokenDto {
    * @example ["invoices:create","invoices:read"]
    */
   scopes?: any[][];
+}
+
+export interface CreateWorkspaceDto {
+  /**
+   * Nombre de la empresa/workspace
+   * @example "Mi Empresa S.L."
+   */
+  name: string;
+  /**
+   * NIF/CIF de la empresa
+   * @example "B12345678"
+   */
+  tax_id: string;
+  /**
+   * Descripción del workspace
+   * @example "Workspace principal de la empresa"
+   */
+  description?: string;
+  /**
+   * URL del logo de la empresa
+   * @example "https://example.com/logo.png"
+   */
+  logo_url?: string;
+}
+
+export interface UpdateWorkspaceDto {
+  /**
+   * Nombre de la empresa/workspace
+   * @example "Mi Empresa S.L."
+   */
+  name?: string;
+  /**
+   * NIF/CIF de la empresa
+   * @example "B12345678"
+   */
+  tax_id?: string;
+  /**
+   * Descripción del workspace
+   * @example "Workspace principal de la empresa"
+   */
+  description?: string;
+  /** Estado activo del workspace */
+  is_active?: boolean;
+  /** Configuración del workspace (JSON) */
+  settings?: object;
+  /**
+   * URL del logo de la empresa
+   * @example "https://example.com/logo.png"
+   */
+  logo_url?: string;
+}
+
+export interface AddMemberDto {
+  /**
+   * Identificador del usuario
+   * @example "user123"
+   */
+  user_id: string;
+  /**
+   * Rol del usuario en el workspace
+   * @example "member"
+   */
+  role: "owner" | "admin" | "member" | "viewer";
+}
+
+export interface UpdateMemberRoleDto {
+  /**
+   * Nuevo rol del usuario
+   * @example "admin"
+   */
+  role: "owner" | "admin" | "member" | "viewer";
 }
 
 export interface UploadCertificateDto {
@@ -422,6 +526,44 @@ export interface MakeupPDFBusinessDto {
   email: string;
 }
 
+export interface MakeupPDFConceptDto {
+  /**
+   * Descripción
+   * @example "Papel A4"
+   */
+  name: string;
+  /**
+   * Precio
+   * @example 10
+   */
+  price: number;
+  /**
+   * Cantidad
+   * @example 5
+   */
+  quantity: number;
+  /**
+   * Total
+   * @example 50
+   */
+  total: number;
+  /**
+   * Subtotal
+   * @example 41.32
+   */
+  subtotal: number;
+  /**
+   * Valor de descuento
+   * @example 8.68
+   */
+  discount_value: number;
+  /**
+   * Porcentaje de descuento
+   * @example 15
+   */
+  discount_percent: number;
+}
+
 export interface MakeupPDFDto {
   /**
    * Nº serie
@@ -494,7 +636,7 @@ export interface MakeupPDFDto {
    */
   template: string;
   /** Conceptos del documento */
-  concepts: any[][];
+  concepts: MakeupPDFConceptDto[];
 }
 
 export type QueryParamsType = Record<string | number, any>;
@@ -907,6 +1049,25 @@ export class Api<
         method: "PATCH",
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags 🔐 Autenticación, Internal
+     * @name AuthControllerSwitchWorkspace
+     * @request POST:/auth/switch-workspace
+     */
+    authControllerSwitchWorkspace: (
+      data: SwitchWorkspaceDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/auth/switch-workspace`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
   };
   apiToken = {
     /**
@@ -960,8 +1121,25 @@ export class Api<
      * No description
      *
      * @tags 🔑 API Tokens, Internal
-     * @name ApiTokenControllerRevokeToken
+     * @name ApiTokenControllerDeleteToken
      * @request DELETE:/api-token/{tokenId}
+     */
+    apiTokenControllerDeleteToken: (
+      tokenId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api-token/${tokenId}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🔑 API Tokens, Internal
+     * @name ApiTokenControllerRevokeToken
+     * @request PUT:/api-token/{tokenId}
      */
     apiTokenControllerRevokeToken: (
       tokenId: string,
@@ -969,6 +1147,178 @@ export class Api<
     ) =>
       this.request<void, any>({
         path: `/api-token/${tokenId}`,
+        method: "PUT",
+        ...params,
+      }),
+  };
+  workspace = {
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerCreateWorkspace
+     * @request POST:/workspace
+     */
+    workspaceControllerCreateWorkspace: (
+      data: CreateWorkspaceDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/workspace`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerGetUserWorkspaces
+     * @request GET:/workspace
+     */
+    workspaceControllerGetUserWorkspaces: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/workspace`,
+        method: "GET",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerGetCurrentWorkspace
+     * @request GET:/workspace/current
+     */
+    workspaceControllerGetCurrentWorkspace: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/workspace/current`,
+        method: "GET",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerGetWorkspace
+     * @request GET:/workspace/{id}
+     */
+    workspaceControllerGetWorkspace: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/workspace/${id}`,
+        method: "GET",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerUpdateWorkspace
+     * @request PUT:/workspace/{id}
+     */
+    workspaceControllerUpdateWorkspace: (
+      id: string,
+      data: UpdateWorkspaceDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/workspace/${id}`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerDeleteWorkspace
+     * @request DELETE:/workspace/{id}
+     */
+    workspaceControllerDeleteWorkspace: (
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/workspace/${id}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerGetMembers
+     * @request GET:/workspace/{id}/members
+     */
+    workspaceControllerGetMembers: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/workspace/${id}/members`,
+        method: "GET",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerAddMember
+     * @request POST:/workspace/{id}/members
+     */
+    workspaceControllerAddMember: (
+      id: string,
+      data: AddMemberDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/workspace/${id}/members`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerUpdateMemberRole
+     * @request PUT:/workspace/{id}/members/{memberId}
+     */
+    workspaceControllerUpdateMemberRole: (
+      id: string,
+      memberId: string,
+      data: UpdateMemberRoleDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/workspace/${id}/members/${memberId}`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags 🏢 Workspaces, Internal
+     * @name WorkspaceControllerRemoveMember
+     * @request DELETE:/workspace/{id}/members/{memberId}
+     */
+    workspaceControllerRemoveMember: (
+      id: string,
+      memberId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/workspace/${id}/members/${memberId}`,
         method: "DELETE",
         ...params,
       }),
